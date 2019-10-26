@@ -17,7 +17,7 @@
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 #include "vex.h"
-#include <math.h>
+#include<cmath>
 using namespace vex;
 
 
@@ -31,6 +31,13 @@ using namespace vex;
 // vex::motor SideMotor =vex::motor( vex::PORT3 );
 // vex::controller Controller1 = vex::controller();
 // 
+ int sign(double n){
+   if(n>0)
+    return 1;
+   if(n<0)
+    return -1;
+   return 0;
+ }
  int main() {
 //     // Display that the program has started to the screen.
     vexcodeInit();
@@ -44,6 +51,8 @@ using namespace vex;
      double speed=1;
      double rotationSpeed=1;
      double rotation=0;
+     double leftPower=0;
+     double rightPower=0;
      // Create an infinite loop so that the program can pull remote control values every iteration.
      // This loop causes the program to run forever.
      
@@ -53,11 +62,22 @@ using namespace vex;
       //Set the left and right motor to spin forward using the controller's Axis positions as the velocity value.
       y_axis=Controller1.Axis3.position();
       x_axis=Controller1.Axis4.position();
-       x_movement=( x_axis/sqrt(pow(x_axis,2)+pow(y_axis,2)))*speed;
-       y_movement=( y_axis/sqrt(pow(x_axis,2)+pow(y_axis,2)))*speed;
+       x_movement= x_axis*speed;
+       y_movement= y_axis*speed;
        rotation=Controller1.Axis1.position()*rotationSpeed;
-       LeftMotor.spin(vex::directionType::fwd, y_movement+rotation, vex::velocityUnits::pct);
-       RightMotor.spin(vex::directionType::fwd, y_movement-rotation, vex::velocityUnits::pct);
+       leftPower=y_movement+rotation;
+       rightPower=y_movement-rotation;
+       if(std::abs(leftPower)>1 || std::abs(rightPower)>1){
+        if(std::abs(leftPower)>std::abs(rightPower)){
+          rightPower*= 1/std::abs(leftPower);
+          leftPower=sign(leftPower);
+        }else{
+          leftPower*= 1/std::abs(rightPower);
+          rightPower=sign(rightPower);
+        }
+       }
+       LeftMotor.spin(vex::directionType::fwd, leftPower, vex::velocityUnits::pct);
+       RightMotor.spin(vex::directionType::fwd, rightPower, vex::velocityUnits::pct);
        SideMotor.spin(vex::directionType::fwd, x_movement, vex::velocityUnits::pct);
  
  
