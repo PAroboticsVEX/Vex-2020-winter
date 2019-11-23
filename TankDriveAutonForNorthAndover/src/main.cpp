@@ -74,9 +74,9 @@ void initializeRobot(){
   }
   PushStackMotor.stop();
   PushStackMotor.setVelocity(40, pct);
-  intake(20.0,-.5);
+  intake(-20.0,0.5);
   wait(0.3, sec);
-  intake(20.0,-.5);
+  intake(-20.0,0.5);
 }
 
 void moveForward(double distance){//distance is in meters
@@ -133,11 +133,11 @@ void pushStack(){
 void autonOne(){
   degTurn(35);
   intake(50,0);
-  moveForward(0.3);
+  moveForward(0.5);
   intake(0,0);
   degTurn(-155);
   moveForward(.7);
-  intake(-10,0);
+  intake(-15,0);
   moveForward(-1);
   intake(0,0);
 }
