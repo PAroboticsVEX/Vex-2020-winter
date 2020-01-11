@@ -55,6 +55,18 @@
 #include<math.h>
 using namespace vex;
 
+double lowerLength=23.25;
+double numerator=850.4189;
+double denominator=22.5267;
+double cameraHeight=27;
+double WtoD=1.296;
+double horizontalCorrection=13.4;
+
+double lowerLengthEdge=32.385;
+double numeratorEdge=1878.97;
+double denominatorEdge=33.19;
+double cameraHeightEdge=41.3;
+double WtoDEdge=0.435;
 
 
 double speed=100;
@@ -92,6 +104,18 @@ double RampPower=20;
  double maxOfThree(double a, double b, double c){
    return fmax(fmax(a,b),c);
  }
+ double verticalDistance(double bottomRatio, bool isCube){
+   if(isCube)
+      return bottomRatio*numerator/(cameraHeight-denominator*bottomRatio)+lowerLength;
+   else
+      return bottomRatio*numeratorEdge/(cameraHeightEdge-denominatorEdge*bottomRatio)+lowerLengthEdge;
+ }
+ double horizontalDistance(double verticalDist, double leftRatio, bool isCube){
+   if(isCube)
+      return (leftRatio-0.5)*WtoD*sqrt(pow(verticalDist,2)+pow(cameraHeight,2))-horizontalCorrection;
+   else
+      return (leftRatio-0.5)*WtoDEdge*sqrt(pow(verticalDist,2)+pow(cameraHeightEdge,2))-horizontalCorrection;
+ }
  void Move(double x, double y, double rotational){
 
     double x_movement= x;
@@ -100,13 +124,6 @@ double RampPower=20;
     leftPower=(y_movement/100)*speed+rotate;
     rightPower=(y_movement/100)*speed-rotate;
     sidePower=(x_movement/100)*speed;
-    //if(absolute(leftPower)>100.0 || absolute(rightPower)>100.0 || absolute(sidePower)>100.0){
-     //double maxPower=maxOfThree(absolute(leftPower),absolute(rightPower),absolute(sidePower));
-     //rightPower*=100.0/maxPower;
-     //leftPower*=100.0/maxPower;
-     //sidePower*=100.0/maxPower;
-     //Brain.Screen.printAt(30, 60, "%f + %f + %f", rightPower, leftPower, sidePower);
-    //}
  }
 
 int main() {
@@ -124,6 +141,44 @@ int main() {
     //RampMotor.resetRotation();
     while(1) {
       
+      Vision1.takeSnapshot(GREEN_CUBE);
+      double verticalDist=1000;
+      double horizontalDist=1000;
+      bool isCubeReliable=false;
+      if(Vision1.objectCount>0){
+        verticalDist=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, true);
+        horizontalDist=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, true);
+      }
+      if(verticalDist<200 && verticalDist>0 && horizontalDist<100 && horizontalDist>-100)
+        isCubeReliable=true;
+      
+      Vision1.takeSnapshot(BLUEB);
+      double verticalDistEdge=1000;
+      double horizontalDistEdge=1000;
+      bool isEdgeReliable=false;
+      if(Vision1.objectCount>0){
+        verticalDistEdge=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, false);
+        horizontalDistEdge=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, false);
+        if(Vision1.objectCount>1){
+          verticalDistEdge+=verticalDistance((212.0-Vision1.objects[1].centerY)/212.0, false);
+          verticalDistEdge/=2.0;
+          horizontalDistEdge+=horizontalDistance(verticalDist, Vision1.objects[1].centerX/316.0, false);
+          horizontalDistEdge/=2.0;
+        }
+      }
+      if(verticalDistEdge<200 && verticalDistEdge>40 && horizontalDistEdge<100 && horizontalDistEdge>-100){
+        if(verticalDistEdge>55)
+          isEdgeReliable=true;
+        else if(Vision1.objectCount>1)
+          isEdgeReliable=true;
+      }
+      Brain.Screen.printAt(20,20,"vertical distance:  %f",verticalDist);
+      Brain.Screen.printAt(20,40,"horizontal distance:  %f",horizontalDist);
+      Brain.Screen.printAt(20,60,"vertical distance Edge:  %f",verticalDistEdge);
+      Brain.Screen.printAt(20,80,"horizontal distance Edge:  %f",horizontalDistEdge);
+
+
+
       Move(Controller1.Axis4.position(),Controller1.Axis3.position(),Controller1.Axis1.position());
       LeftMotor.spin(vex::directionType::fwd, leftPower, vex::velocityUnits::pct);
       RightMotor.spin(vex::directionType::fwd, rightPower, vex::velocityUnits::pct);
