@@ -121,7 +121,7 @@ double revDist=wheelSize*PI*2;
    else
       return (leftRatio-0.5)*WtoDEdge*sqrt(pow(verticalDist,2)+pow(cameraHeightEdge,2))-horizontalCorrection;
  }
- void Move(double x, double y, double rotational){
+ void Move(double x, double y, double speed,double rotational){
 
     double x_movement= x;
     double y_movement= y;
@@ -135,34 +135,33 @@ double revDist=wheelSize*PI*2;
  }
 
 /**
-  * speed is absolute value, distance indicates direction
+  * speed is indicate direction, distance indicates direction
   */
-void moveForward(double distance, double speed){//distance is in meters
+void moveForward(double distance, double vertical, double horizontal, double speed){//distance is in meters
   double allowedRevolutions = fabs(distance)/revDist*2;
-  LeftMotor.setVelocity(speed, pct);
-  RightMotor.setVelocity(speed, pct);
-  if (distance < 0){
-    LeftMotor.spin(reverse);
-    RightMotor.spin(reverse);
-  }else{
-    LeftMotor.spin(fwd);
-    RightMotor.spin(fwd);
-  }
+  LeftMotor.spin(fwd,0,pct);
+  RightMotor.spin(fwd,0,pct);
+  SideMotor.spin(fwd,0,pct);
   double rotation=0;
   double b=35;
   double a=0.025;
   while (rotation <= allowedRevolutions){//the robot thinks half a revolution is a full one
     Brain.Screen.printAt(30, 60, "%f", LeftMotor.position(rev));
-    rotation=fabs((LeftMotor.position(turns)+RightMotor.position(turns))/2);
-    double newSpeed=log10((allowedRevolutions-rotation)*b+0.1)/a*speed;
-    LeftMotor.setVelocity(newSpeed, pct);
-    RightMotor.setVelocity(newSpeed, pct);
+    rotation=sqrt(pow(fabs((LeftMotor.position(turns)+RightMotor.position(turns))/2),2)+pow(fabs(SideMotor.position(turns)),2));
+    double newSpeed=(log10((allowedRevolutions-rotation)*b+0.1)/a+20)*speed;
+    Move(horizontal, vertical, newSpeed, 0);
+    LeftMotor.setVelocity(leftPower, pct);
+    RightMotor.setVelocity(rightPower, pct);
+    SideMotor.setVelocity(sidePower, pct);
   }
   LeftMotor.stop();
   RightMotor.stop();
+  SideMotor.stop();
+  SideMotor.resetPosition();
   LeftMotor.resetRotation();
   RightMotor.resetRotation();
 }
+
 double calibration(double sideError, double kp){
   return sideError*kp;
 }
@@ -177,8 +176,6 @@ void takeShot(char cube){
         case 'p':
           Vision1.takeSnapshot(PURPLE_CUBE);
           break;
-        default:
-          Vision1.takeSnapshot(GREEN_CUBE);
   }
 }
 void moveForwardCalibrated(double distance, double speed, double kpVal, char cube){//distance is in meters
@@ -199,7 +196,6 @@ void moveForwardCalibrated(double distance, double speed, double kpVal, char cub
   double a=0.025;
   while (rotation <= allowedRevolutions){//the robot thinks half a revolution is a full one
       takeShot(cube);
-      Vision1.takeSnapshot(GREEN_CUBE);
       double verticalDist=1000;
       double horizontalDist=1000;
       bool isCubeReliable=false;
@@ -264,9 +260,18 @@ void degTurn(double degrees, double speed){//can take negative degrees
 }
 
 void auton1(){
-  moveForwardCalibrated(0.6, 70,5,'g');
-  moveForward(0.7, 90);
-  degTurn(90, 50);
+  moveForwardCalibrated(0.3, 70,5,'p');
+  moveForward(0.7,1,0,90);
+
+  wait(0.3, sec);
+  moveForward(-0.9,-1,-0.3,90);
+  moveForward(-0.3, 0, -1, 90);
+  moveForwardCalibrated(0.3, 70,5,'p');
+  moveForward(0.7,1,0,90);
+  wait(0.3, sec);
+  moveForward(-0.3, -1, 0, 90);
+  degTurn(-145, 90);
+  
 }
 
 int main() {
