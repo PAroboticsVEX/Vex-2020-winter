@@ -8,7 +8,8 @@ using code = vision::code;
 brain  Brain;
 
 // VEXcode device constructors
-sonar RangeFinderC = sonar(Brain.ThreeWirePort.C);
+sonar RangeFinderLeft = sonar(Brain.ThreeWirePort.G);
+sonar RangeFinderRight = sonar(Brain.ThreeWirePort.C);
 controller Controller1 = controller(primary);
 motor LeftMotor = motor(PORT2, ratio18_1, false);
 motor RightMotor = motor(PORT1, ratio18_1, true);
@@ -18,9 +19,7 @@ motor RightArm = motor(PORT17, ratio36_1, true);
 motor RampMotor = motor(PORT9, ratio36_1, false);
 motor intakeLeft = motor(PORT5, ratio18_1, false);
 motor intakeRight = motor(PORT4, ratio18_1, true);
-accelerometer AccelYAxis = accelerometer(Brain.ThreeWirePort.D);
-accelerometer AccelXAxis = accelerometer(Brain.ThreeWirePort.C);
-accelerometer AccelZAxis = accelerometer(Brain.ThreeWirePort.E);
+
 // VEXcode generated functions
 
 

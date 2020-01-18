@@ -55,74 +55,68 @@
 #include<math.h>
 using namespace vex;
 
+//constants for the vision sensor for detecting cubes
 double lowerLength=23.25;
 double numerator=850.4189;
 double denominator=22.5267;
 double cameraHeight=27;
 double WtoD=1.296;
-double horizontalCorrection=13.4;
 
+//distance from the camera to the center of the robot
+double horizontalCorrection=13.4; 
+
+//constants for the vision sensor for detecting the edges(of the place where we stack the cube)
 double lowerLengthEdge=32.385;
 double numeratorEdge=1878.97;
 double denominatorEdge=33.19;
 double cameraHeightEdge=41.3;
-double WtoDEdge=0.435;
+double WtoDEdge=1.5;
+//note that the vision sensor is not configured for red edges yet/ only for blue now
 
-
-double speed=100;
-double rotationSpeed=50;
+double speed=100; //a speed value that's seldom used
+double rotationSpeed=50; //a rotation speed value that's seldom used
 double rotate=0;
-double leftPower=0;
-double rightPower=0;
-double sidePower=0;
-double leftArmPower=100;
-double rightArmPower=100;
-double RampPower=20;
+double leftPower=0; // global variable for the power of leftMotor
+double rightPower=0; // global variable for the power of rightMotor
+double sidePower=0; // global variable for the power of sideMotor
+double leftArmPower=100; //not yet used
+double rightArmPower=100; //not yet used
+double RampPower=20; //not yet used
 
 double wheelSize=0.04445; //radius in m
 double PI=3.141592653589;
 double revDist=wheelSize*PI*2;
 
-// 
-// // A global instance of vex::brain used for printing to the V5 brain screen
-// vex::brain       Brain;
-// 
-// // define your global instances of motors and other devices here
-// vex::motor LeftMotor        = vex::motor( vex::PORT1 );
-// vex::motor RightMotor       = vex::motor( vex::PORT2, true );
-// vex::motor SideMotor =vex::motor( vex::PORT3 );
-// vex::controller Controller1 = vex::controller();
-// 
- int sign(double n){
-   if(n>0)
-    return 1;
-   if(n<0)
-    return -1;
-   return 0;
- }
- double absolute(double n){
-   if(n>0)
-    return n;
-   else
-    return -n;
- }
- double maxOfThree(double a, double b, double c){
-   return fmax(fmax(a,b),c);
- }
- double verticalDistance(double bottomRatio, bool isCube){
+/**
+* calculation for the vertical distance
+* bottomRatio: ratio of the cube's position from bottom up
+* isCube=true if it's cube, = false when we are calculating for edges
+*/
+ double verticalDistance(double bottomRatio, bool isCube){ 
    if(isCube)
       return bottomRatio*numerator/(cameraHeight-denominator*bottomRatio)+lowerLength;
    else
       return bottomRatio*numeratorEdge/(cameraHeightEdge-denominatorEdge*bottomRatio)+lowerLengthEdge;
  }
+
+ /**
+ * calculate horizontal distance
+ * input the vertical distance calculated, leftRatio: ratio of cube's position from left to right and isCube
+ */
  double horizontalDistance(double verticalDist, double leftRatio, bool isCube){
    if(isCube)
       return (leftRatio-0.5)*WtoD*sqrt(pow(verticalDist,2)+pow(cameraHeight,2))-horizontalCorrection;
    else
       return (leftRatio-0.5)*WtoDEdge*sqrt(pow(verticalDist,2)+pow(cameraHeightEdge,2))-horizontalCorrection;
  }
- void Move(double x, double y, double speed,double rotational){
 
+ /**
+ *  calculate the power of motors based on the inputs
+ *  x=horizontal speed, y=vertical speed. x and y are between -1 and 1
+ *  speed is between 0 and 100
+ *  rotational is rotating speed, set 0 when not rotating
+ */
+ void Move(double x, double y, double speed,double rotational){
     double x_movement= x;
     double y_movement= y;
     rotate=rotational/100*rotationSpeed;
@@ -130,13 +124,16 @@ double revDist=wheelSize*PI*2;
     rightPower=(y_movement/100)*speed-rotate;
     sidePower=(x_movement/100)*speed;
  }
+
  double revolutionToDistance(double revol){
    return revol*revDist;
  }
 
 /**
-  * speed is indicate direction, distance indicates direction
-  */
+* speed is absolute value, distance indicates direction
+* vertical and horizontal functions like y and x in Move method
+* distance is the euclidean distance of the movement
+*/
 void moveForward(double distance, double vertical, double horizontal, double speed){//distance is in meters
   double allowedRevolutions = fabs(distance)/revDist*2;
   LeftMotor.spin(fwd,0,pct);
@@ -165,6 +162,7 @@ void moveForward(double distance, double vertical, double horizontal, double spe
 double calibration(double sideError, double kp){
   return sideError*kp;
 }
+
 void takeShot(char cube){
   switch(cube){
         case 'g':
@@ -176,8 +174,41 @@ void takeShot(char cube){
         case 'p':
           Vision1.takeSnapshot(PURPLE_CUBE);
           break;
+        case 'e':
+          Vision1.takeSnapshot(BLUEB);
+          break;
   }
 }
+//code for ultrasonic which doesn't work
+/*void ultrasonicMove(double stopDist, double speed, double kpVal){
+  LeftMotor.spin(fwd,speed,pct);
+  RightMotor.spin(fwd,speed,pct);
+  double leftRead=1000;
+  double rightRead=1000; 
+  double lastLeft=1000;
+  double lastRight=1000;
+  while((leftRead+rightRead)/2>stopDist){
+    leftRead= RangeFinderLeft.distance(vex::distanceUnits::cm);
+    rightRead=RangeFinderRight.distance(vex::distanceUnits::cm);
+    double error=(rightRead-leftRead)/(leftRead+rightRead);
+    LeftMotor.setVelocity(speed-error*kpVal, pct);
+    RightMotor.setVelocity(speed+error*kpVal, pct);
+    lastLeft=leftRead;
+    lastRight=rightRead;
+  } 
+  LeftMotor.stop();
+  RightMotor.stop();
+  LeftMotor.resetRotation();
+  RightMotor.resetRotation();
+}*/
+
+/**
+* distance indicates direction
+* speed's sign doesn't matter because the program doesn't support moving backward
+* although you can fix it easily for that
+* kpVal indicates the speed of correction based on the Vision Sensor
+* cube indicates which type of cube or edge it is
+*/
 void moveForwardCalibrated(double distance, double speed, double kpVal, char cube){//distance is in meters
   double allowedRevolutions = fabs(distance)/revDist*2;
   double sideError=0;
@@ -200,9 +231,21 @@ void moveForwardCalibrated(double distance, double speed, double kpVal, char cub
       double horizontalDist=1000;
       bool isCubeReliable=false;
       if(Vision1.objectCount>0){
-        verticalDist=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, true);
-        horizontalDist=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, true);
+        if(cube=='e'){
+          verticalDist=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, false);
+          horizontalDist=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, false);
+          if(Vision1.objectCount>1){
+            verticalDist+=verticalDistance((212.0-Vision1.objects[1].centerY)/212.0, false);
+            verticalDist/=2.0;
+            horizontalDist+=horizontalDistance(verticalDist, Vision1.objects[1].centerX/316.0, false);
+            horizontalDist/=2.0;
+          }
+        }else{
+          verticalDist=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, true);
+          horizontalDist=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, true);
+        }
       }
+
       if(verticalDist<200 && verticalDist>0 && horizontalDist<100 && horizontalDist>-100)
         isCubeReliable=true;
       if(isCubeReliable)
@@ -224,6 +267,9 @@ void moveForwardCalibrated(double distance, double speed, double kpVal, char cub
   RightMotor.resetRotation();
 }
 
+/**
+* degrees indicates direction of turning
+*/
 void degTurn(double degrees, double speed){//can take negative degrees
   double percent = fabs(degrees)/90.0;
   double maxRev = 2.2*percent;
@@ -259,24 +305,51 @@ void degTurn(double degrees, double speed){//can take negative degrees
 
 }
 
-void auton1(){
-  moveForwardCalibrated(0.3, 70,5,'p');
-  moveForward(0.7,1,0,90);
+void auton1(){ //still need to add the intake and stacking
+  moveForwardCalibrated(0.3, 70,5,'p'); //move forward with correction towards purple cube
+  moveForward(0.7,1,0,90); //move forward again to intake the cubes
 
-  wait(0.3, sec);
-  moveForward(-0.9,-1,-0.3,90);
-  moveForward(-0.3, 0, -1, 90);
-  moveForwardCalibrated(0.3, 70,5,'p');
-  moveForward(0.7,1,0,90);
-  wait(0.3, sec);
-  moveForward(-0.3, -1, 0, 90);
-  degTurn(-145, 90);
-  
+  wait(0.3, sec); //wait for the cube to all get sucked up
+  moveForward(-0.9,-1,-0.3,90); // move backward while moving to the left
+  moveForward(-0.3, 0, -1, 90); // move to the left
+  moveForwardCalibrated(0.3, 70,5,'p'); // move forward towards the purple cube
+  moveForward(0.7,1,0,90); //move forward again
+  wait(0.3, sec); //wait for the cube to all get sucked up
+  moveForward(-0.2, -1, 0, 90); //move back a bit(this should in fact be increased)
+  degTurn(-145, 90); //turn 145 degree left, I meant 135 deg, cuz it's the best angle to stack
+  moveForwardCalibrated(0.4, 50, 25, 'e'); // walk towards to edges(don't go too much, since the vision sensor is not precise when close)
+  moveForward(0.5, 1, 0, 50); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
+  // don't try ultrasonic, it's confirmed that it doesn't work when the surface the soud is reflected does not face the robot directly
+  // could try using a bumper to detect collision with the wall
 }
 
 int main() {
-    vexcodeInit();
+    vexcodeInit(); //default code of vex
     auton1();
+
+    //code for driverMode or other testing purposes
+    /*while(true){
+      Vision1.takeSnapshot(BLUEB);
+      double verticalDistEdge=1000;
+      double horizontalDistEdge=1000;
+      
+      if(Vision1.objectCount>0){
+        verticalDistEdge=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, false);
+        horizontalDistEdge=horizontalDistance(verticalDistEdge, Vision1.largestObject.centerX/316.0, false);
+        if(Vision1.objectCount>1){
+          verticalDistEdge+=verticalDistance((212.0-Vision1.objects[1].centerY)/212.0, false);
+          verticalDistEdge/=2.0;
+          horizontalDistEdge+=horizontalDistance(verticalDistEdge, Vision1.objects[1].centerX/316.0, false);
+          horizontalDistEdge/=2.0;
+        }
+      }
+      Brain.Screen.printAt(20, 20,"Hori: %f",horizontalDistEdge);
+      Brain.Screen.printAt(20, 40,"Verti: %f",verticalDistEdge);
+    }*/
+    //moveForwardCalibrated(0.4, 50, 25, 'e');
+    //while(true)
+      //Brain.Screen.printAt(0,20,"%f",RangeFinderRight.distance(vex::distanceUnits::cm));
+    //ultrasonicMove(35, 50,5);
     /*while(1) {
 
 
