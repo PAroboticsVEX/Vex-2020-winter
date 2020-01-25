@@ -63,7 +63,7 @@ double cameraHeight=27;
 double WtoD=1.296;
 
 //distance from the camera to the center of the robot
-double horizontalCorrection=13.4; 
+double horizontalCorrection=17.78; 
 
 //constants for the vision sensor for detecting the edges(of the place where we stack the cube)
 double lowerLengthEdge=32.385;
