@@ -56,7 +56,7 @@
 using namespace vex;
 
 //constants for the vision sensor for detecting cubes (change with every robot)
-double lowerLength=23.25;
+double lowerLength=23.25;d
 double numerator=850.4189;
 double denominator=22.5267;
 double cameraHeight=27;
@@ -83,7 +83,8 @@ double leftArmPower=100; //not yet used
 double rightArmPower=100; //not yet used
 double RampPower=20; //not yet used
 
-double wheelSize=0.04445; //radius in m
+double wheelSize=0.107188; //radius in m -- Mechanum wheels 
+
 double PI=3.141592653589;
 double revDist=wheelSize*PI*2;
 double turningCoefficient=2.2;
