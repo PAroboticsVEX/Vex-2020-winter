@@ -83,7 +83,7 @@ double leftArmPower=100; //not yet used
 double rightArmPower=100; //not yet used
 double RampPower=20; //not yet used
 
-double wheelSize=0.107188; //radius in m -- Mechanum wheels 
+double wheelSize=0.053594; //radius in m -- Mechanum wheels 
 
 double PI=3.141592653589;
 double revDist=wheelSize*PI*2;
