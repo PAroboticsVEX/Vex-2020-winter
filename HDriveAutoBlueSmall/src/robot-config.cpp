@@ -8,15 +8,14 @@ using code = vision::code;
 brain  Brain;
 
 // VEXcode device constructors
-
 controller Controller1 = controller(primary);
-motor LeftMotor = motor(PORT2, ratio18_1, false);
-motor RightMotor = motor(PORT1, ratio18_1, true);
+motor LeftMotor = motor(PORT1, ratio18_1, true);
+motor RightMotor = motor(PORT2, ratio18_1, false);
 motor SideMotor = motor(PORT3, ratio18_1, false);
-motor RampMotor1 = motor(PORT9, ratio36_1, false);
-motor RampMotor2 = motor(PORT10, ratio36_1, true);
-motor intakeLeft = motor(PORT5, ratio18_1, false);
-motor intakeRight = motor(PORT4, ratio18_1, true);
+motor intakeLeft = motor(PORT4, ratio18_1, true);
+motor intakeRight = motor(PORT5, ratio18_1, false);
+motor RampMotor1 = motor(PORT8, ratio18_1, true);
+motor RampMotor2 = motor(PORT9, ratio18_1, false);
 
 // VEXcode generated functions
 

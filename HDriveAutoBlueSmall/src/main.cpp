@@ -63,7 +63,7 @@ double cameraHeight=27;
 double WtoD=1.296;
 
 //distance from the camera to the center of the robot
-double horizontalCorrection=13.4; 
+double horizontalCorrection=-11.43; 
 
 //constants for the vision sensor for detecting the edges(of the place where we stack the cube)
 double lowerLengthEdge=32.385;
@@ -83,17 +83,18 @@ double leftArmPower=100; //not yet used
 double rightArmPower=100; //not yet used
 double RampPower=20; //not yet used
 
-double wheelSize=0.053594; //radius in m
+double wheelSize=0.04445; //radius in m
 double PI=3.141592653589;
 double revDist=wheelSize*PI*2;
 double turningCoefficient=2.2;
 
-double rampPushDeg=500;
+double rampPushDeg=730;
 
 /*
 global variables that you shouldn't mess up with
 */
 double startTime=0;
+bool isMoving=false;
 
 /**
 * calculation for the vertical distance
@@ -327,13 +328,20 @@ void ramp(bool isInit, double power_, double stopDeg, double maxTime){
   if(isInit)
     return;
   double stopRot=stopDeg/180; //robot thinks half revolution is a full-one
-  while(fabs(RampMotor1.position(turns))+fabs(RampMotor2.position(turns))<2*stopRot || (Brain.Timer.time(sec)-startTime)<maxTime);
+  while((fabs(RampMotor1.position(turns))+fabs(RampMotor2.position(turns)))<2*stopRot && (Brain.Timer.time(sec)-startTime)<maxTime){
+    Brain.Screen.printAt(20, 20, "%f",Brain.Timer.time(sec));
+    RampMotor1.spin(fwd,power_,pct);
+    RampMotor2.spin(fwd,power_,pct);
+  }
   RampMotor1.stop();
   RampMotor2.stop();
 }
 
 void deploy(){
-  
+  ramp(true, 100, rampPushDeg, 2);
+  ramp(false, 100, rampPushDeg, 2);
+  ramp(true, -100, (rampPushDeg-50), 2);
+  ramp(false, -100, (rampPushDeg-50), 2);
 }
 
 void auton1(){ //still need to add the intake and stacking
@@ -356,12 +364,34 @@ void auton1(){ //still need to add the intake and stacking
   stopIntake(false);
   wait(0.5, sec);
   moveForward(-0.4, -1, 0, 20);
+  
+
+  /*intakeCubes(100);
+  moveForward(1.2,1,0,50);
+  wait(0.2, sec); //wait for the cube to all get sucked up
+  degTurn(-135, 100); //turn 135 degree left
+  moveForwardCalibrated(0.45, 80, 20, 'o');
+  stopIntake(true);
+  ramp(true, 20, rampPushDeg, 5);
+  moveForward(0.35, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
+  ramp(false, 20, rampPushDeg, 5);
+  stopIntake(false);
+  wait(0.5, sec);
+  moveForward(-0.4, -1, 0, 20);*/
   // don't try ultrasonic, it's confirmed that it doesn't work when the surface the soud is reflected does not face the robot directly
   // could try using a bumper to detect collision with the wall
 }
-
-int main() {
-    vexcodeInit(); //default code of vex
+ void Move(double x_movement, double y_movement, double rotational){
+    if(x_movement==0 && y_movement==0 && rotational==0)
+      isMoving=false;
+    else
+      isMoving=true;
+    rotate=rotational/100*rotationSpeed;
+    leftPower=(y_movement/100)*speed+rotate;
+    rightPower=(y_movement/100)*speed-rotate;
+    sidePower=(x_movement/100)*speed;
+ }
+void autonomous(void) { //default code of vex
     deploy();
     auton1();
 
@@ -456,4 +486,174 @@ int main() {
       }
       Brain.Screen.printAt(0,140,"\nrevolution %f",LeftArm.rotation(vex::rotationUnits::deg));
     }*/
+}
+
+//competition Competition;
+
+// define your global instances of motors and other devices here
+
+/*---------------------------------------------------------------------------*/
+/*                          Pre-Autonomous Functions                         */
+/*                                                                           */
+/*  You may want to perform some actions before the competition starts.      */
+/*  Do them in the following function.  You must return from this function   */
+/*  or the autonomous and usercontrol tasks will not be started.  This       */
+/*  function is only called once after the V5 has been powered on and        */
+/*  not every time that the robot is disabled.                               */
+/*---------------------------------------------------------------------------*/
+
+void pre_auton(void) {
+  // Initializing Robot Configuration. DO NOT REMOVE!
+  vexcodeInit();
+  // All activities that occur before the competition starts
+  // Example: clearing encoders, setting servo positions, ...
+}
+
+/*---------------------------------------------------------------------------*/
+/*                                                                           */
+/*                              Autonomous Task                              */
+/*                                                                           */
+/*  This task is used to control your robot during the autonomous phase of   */
+/*  a VEX Competition.                                                       */
+/*                                                                           */
+/*  You must modify the code to add your own robot specific commands here.   */
+/*---------------------------------------------------------------------------*/
+void usercontrol(void){
+  bool ramping=false;
+    // Display that the program has started to the screen.
+    
+    //Brain.Screen.print("Arcade Control Program Started");
+    
+    
+    // Create an infinite loop so that the program can pull remote control values every iteration.
+    // This loop causes the program to run forever.
+    //LeftArm.resetRotation();
+    //RightArm.resetRotation();
+    //RampMotor.resetRotation();
+    while(1) {
+      
+      // Vision1.takeSnapshot(GREEN_CUBE);
+      // double verticalDist=1000;
+      // double horizontalDist=1000;
+      // bool isCubeReliable=false;
+      // if(Vision1.objectCount>0){
+      //   verticalDist=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, true);
+      //   horizontalDist=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, true);
+      // }
+      // if(verticalDist<200 && verticalDist>0 && horizontalDist<100 && horizontalDist>-100)
+      //   isCubeReliable=true;
+      
+      // Vision1.takeSnapshot(BLUEB);
+      // double verticalDistEdge=1000;
+      // double horizontalDistEdge=1000;
+      // bool isEdgeReliable=false;
+      // if(Vision1.objectCount>0){
+      //   verticalDistEdge=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, false);
+      //   horizontalDistEdge=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, false);
+      //   if(Vision1.objectCount>1){
+      //     verticalDistEdge+=verticalDistance((212.0-Vision1.objects[1].centerY)/212.0, false);
+      //     verticalDistEdge/=2.0;
+      //     horizontalDistEdge+=horizontalDistance(verticalDist, Vision1.objects[1].centerX/316.0, false);
+      //     horizontalDistEdge/=2.0;
+      //   }
+      // }
+      // if(verticalDistEdge<200 && verticalDistEdge>40 && horizontalDistEdge<100 && horizontalDistEdge>-100){
+      //   if(verticalDistEdge>55)
+      //     isEdgeReliable=true;
+      //   else if(Vision1.objectCount>1)
+      //     isEdgeReliable=true;
+      // }
+      // Brain.Screen.printAt(20,20,"vertical distance:  %f",verticalDist);
+      // Brain.Screen.printAt(20,40,"horizontal distance:  %f",horizontalDist);
+      // Brain.Screen.printAt(20,60,"vertical distance Edge:  %f",verticalDistEdge);
+      // Brain.Screen.printAt(20,80,"horizontal distance Edge:  %f",horizontalDistEdge);
+
+
+
+
+
+
+      Move(Controller1.Axis4.position(),Controller1.Axis3.position(),Controller1.Axis1.position());
+      if(isMoving){
+        LeftMotor.spin(vex::directionType::fwd, leftPower, vex::velocityUnits::pct);
+        RightMotor.spin(vex::directionType::fwd, rightPower, vex::velocityUnits::pct);
+        SideMotor.spin(vex::directionType::fwd, sidePower, vex::velocityUnits::pct);
+      }else{
+        if(ramping){
+          LeftMotor.stop(hold);
+          RightMotor.stop(hold);
+          SideMotor.stop(hold);
+        }else{
+          LeftMotor.stop();
+          RightMotor.stop();
+          SideMotor.stop();
+        }
+      }
+      if(Controller1.ButtonL1.pressing()){
+        RampMotor1.spin(vex::directionType::fwd,RampPower, vex::velocityUnits::pct);
+        RampMotor2.spin(vex::directionType::fwd,RampPower, vex::velocityUnits::pct);
+        ramping=true;
+      }else if(Controller1.ButtonL2.pressing()){
+        RampMotor1.spin(vex::directionType::fwd,-RampPower, vex::velocityUnits::pct);
+        RampMotor2.spin(vex::directionType::fwd,-RampPower, vex::velocityUnits::pct);
+        ramping=false;
+      }else{
+        if(ramping){
+          RampMotor1.stop(hold);
+          RampMotor2.stop(hold);
+        }
+        else{
+          RampMotor1.stop();
+          RampMotor2.stop();
+        }
+      }
+      if (Controller1.ButtonR1.pressing()){
+        intakeLeft.spin(vex::directionType::fwd,100, vex::velocityUnits::pct);
+        intakeRight.spin(vex::directionType::fwd,100, vex::velocityUnits::pct);
+        ramping=false;
+
+      }else if (Controller1.ButtonR2.pressing()){
+        intakeLeft.spin(vex::directionType::fwd,-100, vex::velocityUnits::pct);
+        intakeRight.spin(vex::directionType::fwd,-100, vex::velocityUnits::pct);
+      }else{
+        if(ramping){
+          intakeLeft.stop(coast);
+          intakeRight.stop(coast);
+        }else{
+          intakeLeft.stop();
+          intakeRight.stop();
+        }
+      }
+     
+    }
+}
+
+/*---------------------------------------------------------------------------*/
+/*                                                                           */
+/*                              User Control Task                            */
+/*                                                                           */
+/*  This task is used to control your robot during the user control phase of */
+/*  a VEX Competition.                                                       */
+/*                                                                           */
+/*  You must modify the code to add your own robot specific commands here.   */
+/*---------------------------------------------------------------------------*/
+
+
+//
+// Main will set up the competition functions and callbacks.
+//
+int main() {
+
+  // Set up callbacks for autonomous and driver control periods.
+  //Competition.autonomous(autonomous);
+  //Competition.drivercontrol(usercontrol);
+
+  // Run the pre-autonomous function.
+  pre_auton();
+  autonomous();
+  usercontrol();
+  // Prevent main from exiting with an infinite loop.
+  while (true) {
+    wait(100, msec);
+  }
 }
