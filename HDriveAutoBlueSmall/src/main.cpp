@@ -262,6 +262,7 @@ void moveForwardCalibrated(double distance, double speed, double kpVal, char cub
 
 /**
 * degrees indicates direction of turning
+* turn the specified degree with the specified speed
 */
 void degTurn(double degrees, double speed){//can take negative degrees
   double percent = fabs(degrees)/90.0;
@@ -298,6 +299,8 @@ void degTurn(double degrees, double speed){//can take negative degrees
 
 }
 
+// stops the intake, brake=true: applies natural electromagnetic resistance to changes of the intake motor
+// brake=false, let the intake turn free
 void stopIntake(bool brake){
   if(brake){
     intakeLeft.stop();
@@ -307,6 +310,8 @@ void stopIntake(bool brake){
     intakeRight.stop(coast);
   }
 }
+
+// spins the intake with the given power
 void intakeCubes(double power_){
   if(power_!=0){
     intakeLeft.spin(vex::directionType::fwd, power_, vex::velocityUnits::pct);
@@ -317,6 +322,10 @@ void intakeCubes(double power_){
   }
 }
 
+// if isInit=true, start the ramp movement and then jump out of the program
+// if isInit=false, let the ramp run until it reaches the designated position then jump out of program
+// the use of ramp method must be constituted with two parts, initiating the movement and waiting until the movement ends
+// the purpose of this separation is so that the ramp can move concurrently while the robot is moving to save time
 void ramp(bool isInit, double power_, double stopDeg, double maxTime){
   if(isInit){
     startTime=Brain.Timer.time(sec);
@@ -337,6 +346,7 @@ void ramp(bool isInit, double power_, double stopDeg, double maxTime){
   RampMotor2.stop();
 }
 
+// deploy the robot by moving the ramp
 void deploy(){
   ramp(true, 100, rampPushDeg, 2);
   ramp(false, 100, rampPushDeg, 2);
@@ -362,6 +372,9 @@ void auton1(){ //still need to add the intake and stacking
   moveForward(0.28, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
   ramp(false, 20, rampPushDeg, 5);
   stopIntake(false);
+  moveForward(0.05,1,0,40);  //moving back and forth to make sure the stack is up
+  moveForward(-0.07,-1,0,40);
+  moveForward(0.08,1,0,20);
   wait(0.5, sec);
   moveForward(-0.4, -1, 0, 20);
   
@@ -381,6 +394,8 @@ void auton1(){ //still need to add the intake and stacking
   // don't try ultrasonic, it's confirmed that it doesn't work when the surface the soud is reflected does not face the robot directly
   // could try using a bumper to detect collision with the wall
 }
+
+// calculate the powers of the motors based on the x,y,rotational values
  void Move(double x_movement, double y_movement, double rotational){
     if(x_movement==0 && y_movement==0 && rotational==0)
       isMoving=false;
@@ -391,6 +406,8 @@ void auton1(){ //still need to add the intake and stacking
     rightPower=(y_movement/100)*speed-rotate;
     sidePower=(x_movement/100)*speed;
  }
+
+// competition template
 void autonomous(void) { //default code of vex
     deploy();
     auton1();
@@ -572,7 +589,7 @@ void usercontrol(void){
 
 
 
-
+      //driver controls, easy to read, so no comments
       Move(Controller1.Axis4.position(),Controller1.Axis3.position(),Controller1.Axis1.position());
       if(isMoving){
         LeftMotor.spin(vex::directionType::fwd, leftPower, vex::velocityUnits::pct);
@@ -642,6 +659,8 @@ void usercontrol(void){
 //
 // Main will set up the competition functions and callbacks.
 //
+
+// the heck of competition template
 int main() {
 
   // Set up callbacks for autonomous and driver control periods.
