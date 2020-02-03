@@ -63,7 +63,7 @@ double cameraHeight=27;
 double WtoD=1.296;
 
 //distance from the camera to the center of the robot
-double horizontalCorrection=11; 
+double horizontalCorrection=7.78; 
 
 //constants for the vision sensor for detecting the edges(of the place where we stack the cube)
 double lowerLengthEdge=32.385;
@@ -81,7 +81,7 @@ double rightPower=0; // global variable for the power of rightMotor
 double sidePower=0; // global variable for the power of sideMotor
 double leftArmPower=100; //not yet used
 double rightArmPower=100; //not yet used
-double RampPower=35; //not yet used
+double RampPower=45; //not yet used
 
 double wheelSize=0.04445; //radius in m
 double PI=3.141592653589;
@@ -156,7 +156,7 @@ void moveForward(double distance, double vertical, double horizontal, double spe
   while (rotation <= allowedRevolutions){//the robot thinks half a revolution is a full one
     //Brain.Screen.printAt(30, 60, "%f", LeftMotor.position(rev));
     rotation=sqrt(pow(fabs((LeftMotor.position(turns)+RightMotor.position(turns))/2),2)+pow(fabs(SideMotor.position(turns)),2));
-    double newSpeed=(log10((allowedRevolutions-rotation)*b+0.1)/a+20)*speed;
+    double newSpeed=(log10((allowedRevolutions-rotation)*b+0.1)/a)*speed+speed/fabs(speed)*30;
     Move(horizontal, vertical, newSpeed, 0);
     LeftMotor.setVelocity(leftPower, pct);
     RightMotor.setVelocity(rightPower, pct);
@@ -189,7 +189,7 @@ void takeShot(char cube){
           Vision1.takeSnapshot(BLUEB);
           break;
         case 'r':
-          Vision1.takeSnapshot(BLUEB); //change this to red
+          Vision1.takeSnapshot(REDB); //change this to red
           break;
   }
 }
@@ -224,7 +224,7 @@ void moveForwardCalibrated(double distance, double speed, double kpVal, char cub
       double horizontalDist=1000;
       bool isCubeReliable=false;
       if(Vision1.objectCount>0){
-        if(cube=='e'){
+        if(cube=='b'){
           verticalDist=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, false);
           horizontalDist=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, false);
           if(Vision1.objectCount>1){
@@ -248,7 +248,7 @@ void moveForwardCalibrated(double distance, double speed, double kpVal, char cub
     //Brain.Screen.printAt(30, 60, "%f", LeftMotor.position(rev));
     Brain.Screen.printAt(20, 20, "%f", sideError);
     rotation=fabs((LeftMotor.position(turns)+RightMotor.position(turns))/2);
-    double newSpeed=log10((allowedRevolutions-rotation)*b+0.1)/a*speed;
+    double newSpeed=(log10((allowedRevolutions-rotation)*b+0.1)/a)*speed+speed/fabs(speed)*30;
     LeftMotor.setVelocity(newSpeed, pct);
     RightMotor.setVelocity(newSpeed, pct);
     SideMotor.setVelocity(calibration(sideError,kpVal), pct);
@@ -282,7 +282,7 @@ void degTurn(double degrees, double speed){//can take negative degrees
   while (rotation <= maxRev){//the robot thinks half a revolution is a full one
     //Brain.Screen.printAt(30, 60, "%f", LeftMotor.position(rev));
     rotation=(fabs(LeftMotor.position(turns))+fabs(RightMotor.position(turns)))/2;
-    double newSpeed=log10((maxRev-rotation)*b+0.1)/a*speed;
+    double newSpeed=log10((maxRev-rotation)*b+0.1)/a*speed+speed/fabs(speed)*30;
     if(degrees>0){
     LeftMotor.setVelocity(newSpeed, pct);
     RightMotor.setVelocity(-newSpeed, pct);
@@ -341,85 +341,90 @@ void ramp(bool isInit, double power_, double stopDeg, double maxTime){
 void deploy(){
   ramp(true, 100, rampPushDeg, 2);
   ramp(false, 100, rampPushDeg, 2);
+  intakeCubes(100);
   ramp(true, -100, (rampPushDeg-50), 2);
   ramp(false, -100, (rampPushDeg-50), 2);
+  stopIntake(false);
+  wait(1,sec);
 }
 
 void autonBlueSmall(){ //still need to add the intake and stacking
   intakeCubes(100);
-  moveForward(0.3,1,0,100); //move forward again to intake the cubes
-  moveForward(0.8,1,0,50);
+  moveForward(0.8,1,0,100); //move forward again to intake the cubes
   wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-1,-1,-0.3,100); // move backward while moving to the left
+  moveForward(-0.7,-1,-0.3,100); // move backward while moving to the left
   moveForward(-0.4, 0, -1, 100); // move to the left
-  moveForwardCalibrated(0.3, 100,10,'p'); // move forward towards the purple cube
-  moveForward(0.6,1,0,50); //move forward again
+  moveForwardCalibrated(0.3, 100,4,'p'); // move forward towards the purple cube
+  moveForward(0.4,1,0,100); //move forward again
   wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-0.5, -1, 0, 100); //move back a bit(this should in fact be increased)
-  degTurn(-135, 100); //turn 135 degree left
-  moveForwardCalibrated(0.15, 80, 20, 'b'); // walk towards to edges(don't go too much, since the vision sensor is not precise when close)
+  moveForward(-0.3, -1, 0, 100); //move back a bit(this should in fact be increased)
+  degTurn(-145, 100); //turn 135 degree left
+  moveForwardCalibrated(0.4, 50, 5, 'b'); // walk towards to edges(don't go too much, since the vision sensor is not precise when close)
   stopIntake(true);
-  ramp(true, 60, rampPushDeg+330, 5);
-  moveForward(0.12, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
-  ramp(false, 40, rampPushDeg+330, 5);
+  ramp(true, 60, rampPushDeg+100, 5);
+  moveForward(0.3, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
+  ramp(false, 40, rampPushDeg+100, 5);
   stopIntake(false);
   moveForward(-0.05, -1, 0, 20);
   moveForward(0.07, 1, 0, 20);
   wait(0.5, sec);
-  moveForward(-0.4, -1, 0, 20);
+  moveForward(-0.4, -1, 0, 80);
 }
 
 void autonRedSmall(){ //still need to add the intake and stacking
   intakeCubes(100);
-  moveForward(0.3,1,0,100); //move forward again to intake the cubes
-  moveForward(0.8,1,0,50);
+  moveForward(0.8,1,0,100); //move forward again to intake the cubes
   wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-1,-1,0.3,100); // move backward while moving to the left
+  moveForward(-0.8,-1,0.3,100); // move backward while moving to the left
   moveForward(0.4, 0, 1, 100); // move to the left
   moveForwardCalibrated(0.3, 100,10,'o'); // move forward towards the purple cube
-  moveForward(0.6,1,0,50); //move forward again
+  moveForward(0.6,1,0,100); //move forward again
   wait(0.2, sec); //wait for the cube to all get sucked up
   moveForward(-0.5, -1, 0, 100); //move back a bit(this should in fact be increased)
-  degTurn(135, 100);
+  degTurn(145, 100);
   moveForwardCalibrated(0.15, 80, 20, 'r'); // walk towards to edges(don't go too much, since the vision sensor is not precise when close)
   stopIntake(true);
-  ramp(true, 60, rampPushDeg+330, 5);
-  moveForward(0.12, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
-  ramp(false, 40, rampPushDeg+330, 5);
+  ramp(true, 60, rampPushDeg+100, 5);
+  moveForward(0.12, 1, 0, 100); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
+  ramp(false, 40, rampPushDeg+100, 5);
   stopIntake(false);
   moveForward(-0.05, -1, 0, 20);
   moveForward(0.07, 1, 0, 20);
   wait(0.5, sec);
-  moveForward(-0.4, -1, 0, 20);
+  moveForward(-0.8, -1, 0, 80);
 }
 
 void autonRedLarge(){ //still need to add the intake and stacking
   intakeCubes(100);
-  moveForward(1.2,1,0,50);
+  moveForward(0.6,1,0,70);
   wait(0.2, sec); //wait for the cube to all get sucked up
-  degTurn(-135, 100); //turn 135 degree left
-  moveForwardCalibrated(0.45, 80, 20, 'o');
+ 
+  degTurn(-150, 100); //turn 135 degree left
+  moveForwardCalibrated(0.7, 80, 3, 'o');
   stopIntake(true);
-  ramp(true, 60, rampPushDeg+330, 5);
-  moveForward(0.35, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
-  ramp(false, 40, rampPushDeg+330, 5);
+  ramp(true, 60, rampPushDeg+100, 5);
+  moveForward(0.7, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
+  ramp(false, 20, rampPushDeg+100, 5);
   stopIntake(false);
   moveForward(-0.05, -1, 0, 20);
   moveForward(0.07, 1, 0, 20);
   wait(0.5, sec);
-  moveForward(-0.4, -1, 0, 20);
+  moveForward(-2, -1, 0, 50);
+
+
 }
 
 void autonBlueLarge(){ 
   intakeCubes(100);
-  moveForward(1.2,1,0,50);
+  moveForward(1,1,0,50);
   wait(0.2, sec); //wait for the cube to all get sucked up
-  degTurn(135, 100); //turn 135 degree left
-  moveForwardCalibrated(0.45, 80, 20, 'g');
+  moveForward(-0.1,-1,0,50);
+  degTurn(165, 100); //turn 135 degree left
+  moveForwardCalibrated(0.7, 80, 20, 'g');
   stopIntake(true);
-  ramp(true, 60, rampPushDeg+330, 5);
-  moveForward(0.35, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
-  ramp(false, 40, rampPushDeg+330, 5);
+  ramp(true, 60, rampPushDeg+100, 5);
+  moveForward(0.7, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
+  ramp(false, 20, rampPushDeg+100, 5);
   stopIntake(false);
   moveForward(-0.05, -1, 0, 20);
   moveForward(0.07, 1, 0, 20);
@@ -691,10 +696,11 @@ void usercontrol(void){
 //
 // Main will set up the competition functions and callbacks.
 //
-//competition Competition;
+competition Competition;
 int main() {
-  /*while(1) {
-      Vision1.takeSnapshot(GREEN_CUBE);
+  /*pre_auton();
+  while(1) {
+      Vision1.takeSnapshot(ORANGE_CUBE);
       double verticalDist=1000;
       double horizontalDist=1000;
       bool isCubeReliable=false;
@@ -707,13 +713,13 @@ int main() {
       Brain.Screen.printAt(20, 20,"vert: %f  hori: %f",verticalDist,horizontalDist);
   }*/
   // Set up callbacks for autonomous and driver control periods.
-  //Competition.autonomous(autonomous);
-  //Competition.drivercontrol(usercontrol);
+  Competition.autonomous(autonomous);
+  Competition.drivercontrol(usercontrol);
   
   // Run the pre-autonomous function.
   pre_auton();
 
-  autonomous();
+  //autonomous();
   //usercontrol();
   //usercontrol();
   // Prevent main from exiting with an infinite loop.
