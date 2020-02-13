@@ -156,7 +156,7 @@ void moveForward(double distance, double vertical, double horizontal, double spe
   while (rotation <= allowedRevolutions){//the robot thinks half a revolution is a full one
     //Brain.Screen.printAt(30, 60, "%f", LeftMotor.position(rev));
     rotation=sqrt(pow(fabs((LeftMotor.position(turns)+RightMotor.position(turns))/2),2)+pow(fabs(SideMotor.position(turns)),2));
-    double newSpeed=(log10((allowedRevolutions-rotation)*b+0.1)/a)*speed+speed/fabs(speed)*30;
+    double newSpeed=(log10((allowedRevolutions-rotation)*b+0.1)/a)*speed+speed/fabs(speed)*50;
     Move(horizontal, vertical, newSpeed, 0);
     LeftMotor.setVelocity(leftPower, pct);
     RightMotor.setVelocity(rightPower, pct);
@@ -171,7 +171,7 @@ void moveForward(double distance, double vertical, double horizontal, double spe
 }
 
 double calibration(double sideError, double kp){
-  return sideError*kp;
+  return sideError*kp+fabs(sideError)/sideError*30;
 }
 
 void takeShot(char cube){
@@ -261,13 +261,24 @@ void moveForwardCalibrated(double distance, double speed, double kpVal, char cub
   RightMotor.resetRotation();
 }
 
+bool isGyroNormal(double degrees){
+  if(fabs(gyroscope.rotation()-degrees)<30)
+    return true;
+  return false;
+}
+bool isRotationReached(double rotation, double targetDeg){
+  double degrees=rotation/turningCoefficient*90;
+  if(isGyroNormal(degrees))
+    return fabs(gyroscope.rotation())>=targetDeg;
+  else
+    return degrees>=targetDeg;
+}
 /**
 * degrees indicates direction of turning
 */
 void degTurn(double degrees, double speed){//can take negative degrees
-  double percent = fabs(degrees)/90.0;
-  double maxRev = turningCoefficient*percent;
-
+  double maxRev = turningCoefficient*fabs(degrees)/90.0;
+  gyroscope.resetRotation();
   if (degrees > 0){
     LeftMotor.spin(fwd,speed,pct);
     RightMotor.spin(fwd,-speed,pct);
@@ -279,7 +290,7 @@ void degTurn(double degrees, double speed){//can take negative degrees
   double rotation=0;
   double b=35;
   double a=0.025;
-  while (rotation <= maxRev){//the robot thinks half a revolution is a full one
+  while (!isRotationReached(rotation, fabs(degrees))){//the robot thinks half a revolution is a full one
     //Brain.Screen.printAt(30, 60, "%f", LeftMotor.position(rev));
     rotation=(fabs(LeftMotor.position(turns))+fabs(RightMotor.position(turns)))/2;
     double newSpeed=log10((maxRev-rotation)*b+0.1)/a*speed+speed/fabs(speed)*30;
@@ -338,60 +349,60 @@ void ramp(bool isInit, double power_, double stopDeg, double maxTime){
   RampMotor2.stop();
 }
 
-void deploy(){
-  ramp(true, 100, rampPushDeg, 2);
-  ramp(false, 100, rampPushDeg, 2);
-  intakeCubes(100);
-  ramp(true, -100, (rampPushDeg-50), 2);
-  ramp(false, -100, (rampPushDeg-50), 2);
-  stopIntake(false);
-  wait(1,sec);
-}
+
 
 void autonBlueSmall(){ //still need to add the intake and stacking
   intakeCubes(100);
   moveForward(0.8,1,0,100); //move forward again to intake the cubes
   wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-0.7,-1,-0.3,100); // move backward while moving to the left
-  moveForward(-0.4, 0, -1, 100); // move to the left
-  moveForwardCalibrated(0.3, 100,4,'p'); // move forward towards the purple cube
+  moveForward(-0.7,-1,-0.4,100); // move backward while moving to the left
+  moveForward(-0.2, 0, -1, 100); // move to the left
+  moveForwardCalibrated(0.3, 100,3,'p'); // move forward towards the purple cube
   moveForward(0.4,1,0,100); //move forward again
   wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-0.3, -1, 0, 100); //move back a bit(this should in fact be increased)
-  degTurn(-145, 100); //turn 135 degree left
-  moveForwardCalibrated(0.4, 50, 5, 'b'); // walk towards to edges(don't go too much, since the vision sensor is not precise when close)
+  //moveForward(-0.3, -1, 0, 100); /**enable this if Vision doesn't work**/
+  degTurn(-135, 100); //turn 135 degree left
+  moveForward(-0.2, 0, -1, 100); /**delete this if Vision doesn't work**/
+  moveForwardCalibrated(0.5, 60, 6, 'b'); /**make this 0.2 if vision doesn't work**/
   stopIntake(true);
-  ramp(true, 60, rampPushDeg+100, 5);
-  moveForward(0.3, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
-  ramp(false, 40, rampPushDeg+100, 5);
+  ramp(true, 40, rampPushDeg, 5);
+  moveForward(0.15, 1, 0, 70); //move forward 
+  LeftMotor.spin(fwd,100,pct);
+  RightMotor.spin(fwd,100,pct);
+  wait(0.15, sec);
+  LeftMotor.stop(hold);
+  RightMotor.stop(hold);
+  ramp(false, 30, rampPushDeg, 5);
   stopIntake(false);
-  moveForward(-0.05, -1, 0, 20);
-  moveForward(0.07, 1, 0, 20);
   wait(0.5, sec);
-  moveForward(-0.4, -1, 0, 80);
+  moveForward(-0.4, -1, 0, 100);
 }
 
 void autonRedSmall(){ //still need to add the intake and stacking
   intakeCubes(100);
   moveForward(0.8,1,0,100); //move forward again to intake the cubes
   wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-0.8,-1,0.3,100); // move backward while moving to the left
-  moveForward(0.4, 0, 1, 100); // move to the left
-  moveForwardCalibrated(0.3, 100,10,'o'); // move forward towards the purple cube
-  moveForward(0.6,1,0,100); //move forward again
+  moveForward(-0.7,-1,0.4,100); // move backward while moving to the left
+  moveForward(0.2, 0, 1, 100); // move to the left
+  moveForwardCalibrated(0.3, 100,3,'o'); // move forward towards the purple cube
+  moveForward(0.4,1,0,100); //move forward again
   wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-0.5, -1, 0, 100); //move back a bit(this should in fact be increased)
-  degTurn(145, 100);
-  moveForwardCalibrated(0.15, 80, 20, 'r'); // walk towards to edges(don't go too much, since the vision sensor is not precise when close)
+  //moveForward(-0.3, -1, 0, 100); /**enable this if Vision doesn't work**/
+  degTurn(135, 100); //turn 135 degree left
+  moveForward(0.2, 0, -1, 100); /**delete this if Vision doesn't work**/
+  moveForwardCalibrated(0.5, 60, 6, 'r'); /**make this 0.2 if vision doesn't work**/
   stopIntake(true);
-  ramp(true, 60, rampPushDeg+100, 5);
-  moveForward(0.12, 1, 0, 100); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
-  ramp(false, 40, rampPushDeg+100, 5);
+  ramp(true, 40, rampPushDeg, 5);
+  moveForward(0.15, 1, 0, 70); //move forward 
+  LeftMotor.spin(fwd,100,pct);
+  RightMotor.spin(fwd,100,pct);
+  wait(0.15, sec);
+  LeftMotor.stop(hold);
+  RightMotor.stop(hold);
+  ramp(false, 30, rampPushDeg, 5);
   stopIntake(false);
-  moveForward(-0.05, -1, 0, 20);
-  moveForward(0.07, 1, 0, 20);
   wait(0.5, sec);
-  moveForward(-0.8, -1, 0, 80);
+  moveForward(-0.4, -1, 0, 100);
 }
 
 void autonRedLarge(){ //still need to add the intake and stacking
@@ -446,7 +457,6 @@ void autonomous(void) { //default code of vex
     //degTurn(90, 50);
   
     // //degTurn(45, 50);
-    deploy();
     autonBlueSmall();
 
     //code for driverMode or other testing purposes
@@ -696,7 +706,7 @@ void usercontrol(void){
 //
 // Main will set up the competition functions and callbacks.
 //
-competition Competition;
+//competition Competition;
 int main() {
   /*pre_auton();
   while(1) {
@@ -713,13 +723,13 @@ int main() {
       Brain.Screen.printAt(20, 20,"vert: %f  hori: %f",verticalDist,horizontalDist);
   }*/
   // Set up callbacks for autonomous and driver control periods.
-  Competition.autonomous(autonomous);
-  Competition.drivercontrol(usercontrol);
+  //Competition.autonomous(autonomous);
+  //Competition.drivercontrol(usercontrol);
   
   // Run the pre-autonomous function.
   pre_auton();
 
-  //autonomous();
+  autonomous();
   //usercontrol();
   //usercontrol();
   // Prevent main from exiting with an infinite loop.

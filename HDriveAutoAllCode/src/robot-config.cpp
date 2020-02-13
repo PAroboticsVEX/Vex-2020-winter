@@ -16,6 +16,7 @@ motor intakeLeft = motor(PORT4, ratio36_1, false);
 motor intakeRight = motor(PORT5, ratio36_1, true);
 motor RampMotor1 = motor(PORT8, ratio18_1, false);
 motor RampMotor2 = motor(PORT9, ratio18_1, true);
+inertial gyroscope = inertial(PORT10);
 
 // VEXcode generated functions
 

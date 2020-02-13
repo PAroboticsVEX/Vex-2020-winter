@@ -12,6 +12,7 @@ extern motor RampMotor1;
 extern motor RampMotor2;
 extern motor intakeLeft;
 extern motor intakeRight;
+extern inertial gyroscope;
 
 
 /**
