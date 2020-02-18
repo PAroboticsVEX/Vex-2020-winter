@@ -55,7 +55,7 @@
 #include<math.h>
 using namespace vex;
 
-//constants for the vision sensor for detecting cubes (change with every robot)
+//constants for the vision sensor for detecting cubes 
 double lowerLength=23.25;
 double numerator=850.4189;
 double denominator=22.5267;
@@ -63,7 +63,7 @@ double cameraHeight=27;
 double WtoD=1.296;
 
 //distance from the camera to the center of the robot
-double horizontalCorrection=7.78; 
+double horizontalCorrection=17; 
 
 //constants for the vision sensor for detecting the edges(of the place where we stack the cube)
 double lowerLengthEdge=32.385;
@@ -86,9 +86,9 @@ double RampPower=45; //not yet used
 double wheelSize=0.04445; //radius in m
 double PI=3.141592653589;
 double revDist=wheelSize*PI*2;
-double turningCoefficient=1;
+double turningCoefficient=1.3;
 
-double rampPushDeg=810;
+double rampPushDeg=800;
 
 /*
 global variables that you shouldn't mess up with
@@ -128,10 +128,10 @@ bool isMoving=false;
  void Move(double x, double y, double speed,double rotational){
     double x_movement= x;
     double y_movement= y;
-    rotate=rotational/100*rotationSpeed;
-    leftPower=(y_movement/100)*speed+rotate;
-    rightPower=(y_movement/100)*speed-rotate;
-    sidePower=(x_movement/100)*speed;
+    rotate=rotational*rotationSpeed;
+    leftPower=(y_movement)*speed+rotate;
+    rightPower=(y_movement)*speed-rotate;
+    sidePower=(x_movement)*speed;
  }
 
  double revolutionToDistance(double revol){
@@ -146,21 +146,20 @@ bool isMoving=false;
 */
 void moveForward(double distance, double vertical, double horizontal, double speed){//distance is in meters
   double allowedRevolutions = fabs(distance)/revDist*2;
-  LeftMotor.spin(fwd,0,pct);
-  RightMotor.spin(fwd,0,pct);
-  SideMotor.spin(fwd,0,pct);
+  Move(horizontal, vertical, speed, 0);
+  LeftMotor.spin(fwd,leftPower,pct);
+  RightMotor.spin(fwd,rightPower,pct);
+  SideMotor.spin(fwd,sidePower,pct);
   double rotation=0;
-  double b=35;
-  double a=0.025;
+
 
   while (rotation <= allowedRevolutions){//the robot thinks half a revolution is a full one
     //Brain.Screen.printAt(30, 60, "%f", LeftMotor.position(rev));
     rotation=sqrt(pow(fabs((LeftMotor.position(turns)+RightMotor.position(turns))/2),2)+pow(fabs(SideMotor.position(turns)),2));
-    double newSpeed=(log10((allowedRevolutions-rotation)*b+0.1)/a)*speed+speed/fabs(speed)*50;
-    Move(horizontal, vertical, newSpeed, 0);
-    LeftMotor.setVelocity(leftPower, pct);
-    RightMotor.setVelocity(rightPower, pct);
-    SideMotor.setVelocity(sidePower, pct);
+    Move(horizontal, vertical, speed, 0);
+    LeftMotor.setVelocity(leftPower,pct);
+    RightMotor.setVelocity(rightPower,pct);
+    SideMotor.setVelocity(sidePower,pct);
   }
   LeftMotor.stop();
   RightMotor.stop();
@@ -171,7 +170,7 @@ void moveForward(double distance, double vertical, double horizontal, double spe
 }
 
 double calibration(double sideError, double kp){
-  return sideError*kp+fabs(sideError)/sideError*30;
+  return sideError*kp+fabs(sideError)/sideError*10;
 }
 
 void takeShot(char cube){
@@ -216,8 +215,6 @@ void moveForwardCalibrated(double distance, double speed, double kpVal, char cub
   }
   SideMotor.spin(fwd);
   double rotation=0;
-  double b=35;
-  double a=0.025;
   while (rotation <= allowedRevolutions){//the robot thinks half a revolution is a full one
       takeShot(cube);
       double verticalDist=1000;
@@ -248,10 +245,9 @@ void moveForwardCalibrated(double distance, double speed, double kpVal, char cub
     //Brain.Screen.printAt(30, 60, "%f", LeftMotor.position(rev));
     Brain.Screen.printAt(20, 20, "%f", sideError);
     rotation=fabs((LeftMotor.position(turns)+RightMotor.position(turns))/2);
-    double newSpeed=(log10((allowedRevolutions-rotation)*b+0.1)/a)*speed+speed/fabs(speed)*30;
-    LeftMotor.setVelocity(newSpeed, pct);
-    RightMotor.setVelocity(newSpeed, pct);
     SideMotor.setVelocity(calibration(sideError,kpVal), pct);
+    LeftMotor.setVelocity(speed,pct);
+    RightMotor.setVelocity(speed,pct);
   }
   SideMotor.stop();
   LeftMotor.stop();
@@ -261,24 +257,16 @@ void moveForwardCalibrated(double distance, double speed, double kpVal, char cub
   RightMotor.resetRotation();
 }
 
-bool isGyroNormal(double degrees){
-  if(fabs(gyroscope.rotation()-degrees)<30)
-    return true;
-  return false;
-}
+
 bool isRotationReached(double rotation, double targetDeg){
   double degrees=rotation/turningCoefficient*90;
-  if(isGyroNormal(degrees))
-    return fabs(gyroscope.rotation())>=targetDeg;
-  else
-    return degrees>=targetDeg;
+  return degrees>=targetDeg;
 }
 /**
 * degrees indicates direction of turning
 */
 void degTurn(double degrees, double speed){//can take negative degrees
-  double maxRev = turningCoefficient*fabs(degrees)/90.0;
-  gyroscope.resetRotation();
+
   if (degrees > 0){
     LeftMotor.spin(fwd,speed,pct);
     RightMotor.spin(fwd,-speed,pct);
@@ -288,18 +276,15 @@ void degTurn(double degrees, double speed){//can take negative degrees
   }
   
   double rotation=0;
-  double b=35;
-  double a=0.025;
   while (!isRotationReached(rotation, fabs(degrees))){//the robot thinks half a revolution is a full one
     //Brain.Screen.printAt(30, 60, "%f", LeftMotor.position(rev));
     rotation=(fabs(LeftMotor.position(turns))+fabs(RightMotor.position(turns)))/2;
-    double newSpeed=log10((maxRev-rotation)*b+0.1)/a*speed+speed/fabs(speed)*30;
-    if(degrees>0){
-    LeftMotor.setVelocity(newSpeed, pct);
-    RightMotor.setVelocity(-newSpeed, pct);
+    if (degrees > 0){
+      LeftMotor.spin(fwd,speed,pct);
+      RightMotor.spin(fwd,-speed,pct);
     }else{
-    LeftMotor.setVelocity(-newSpeed, pct);
-    RightMotor.setVelocity(newSpeed, pct);
+      LeftMotor.spin(fwd,-speed,pct);
+      RightMotor.spin(fwd,speed,pct);
     }
   }
 
@@ -352,56 +337,75 @@ void ramp(bool isInit, double power_, double stopDeg, double maxTime){
 
 
 void autonBlueSmall(){ //still need to add the intake and stacking
+
   intakeCubes(100);
-  moveForward(0.8,1,0,100); //move forward again to intake the cubes
+  moveForward(0.6,1,0,100); //move forward again to intake the cubes
   wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-0.7,-1,-0.4,100); // move backward while moving to the left
-  moveForward(-0.2, 0, -1, 100); // move to the left
+  moveForward(-0.45,-1,-0.4,100); // move backward while moving to the left
+  LeftMotor.stop(hold);
+  RightMotor.stop(hold);
+  moveForward(-0.38, 0, -1, 100); // move to the left
+  LeftMotor.stop(brake);
+  RightMotor.stop(brake);
   moveForwardCalibrated(0.3, 100,3,'p'); // move forward towards the purple cube
   moveForward(0.4,1,0,100); //move forward again
   wait(0.2, sec); //wait for the cube to all get sucked up
   //moveForward(-0.3, -1, 0, 100); /**enable this if Vision doesn't work**/
   degTurn(-135, 100); //turn 135 degree left
-  moveForward(-0.2, 0, -1, 100); /**delete this if Vision doesn't work**/
-  moveForwardCalibrated(0.5, 60, 6, 'b'); /**make this 0.2 if vision doesn't work**/
+  moveForward(-0.27, 0, -1, 100); /**delete this if Vision doesn't work**/
+  moveForwardCalibrated(0.55, 100, 3, 'b'); /**make this 0.2 if vision doesn't work**/
   stopIntake(true);
   ramp(true, 40, rampPushDeg, 5);
-  moveForward(0.15, 1, 0, 70); //move forward 
   LeftMotor.spin(fwd,100,pct);
   RightMotor.spin(fwd,100,pct);
-  wait(0.15, sec);
-  LeftMotor.stop(hold);
-  RightMotor.stop(hold);
-  ramp(false, 30, rampPushDeg, 5);
+  wait(0.38, sec);
+  LeftMotor.stop();
+  RightMotor.stop();
+  moveForward(-0.03, -1, 0, 40);
+  ramp(false, 40, rampPushDeg, 5);
+  LeftMotor.spin(fwd,40,pct);
+  RightMotor.spin(fwd,40,pct);
+  wait(0.2, sec);
+  LeftMotor.stop();
+  RightMotor.stop();
   stopIntake(false);
-  wait(0.5, sec);
+  wait(0.2, sec);
   moveForward(-0.4, -1, 0, 100);
 }
 
 void autonRedSmall(){ //still need to add the intake and stacking
   intakeCubes(100);
-  moveForward(0.8,1,0,100); //move forward again to intake the cubes
+  moveForward(0.6,1,0,100); //move forward again to intake the cubes
   wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-0.7,-1,0.4,100); // move backward while moving to the left
-  moveForward(0.2, 0, 1, 100); // move to the left
-  moveForwardCalibrated(0.3, 100,3,'o'); // move forward towards the purple cube
-  moveForward(0.4,1,0,100); //move forward again
+  moveForward(-0.45,-1,0.4,100); // move backward while moving to the left
+  LeftMotor.stop(hold);
+  RightMotor.stop(hold);
+  moveForward(0.38, 0, 1, 100); // move to the left
+  LeftMotor.stop(brake);
+  RightMotor.stop(brake);
+  moveForwardCalibrated(0.3, 100,3,'p'); // move forward towards the purple cube
+  moveForward(0.4,1,0,90); //move forward again
   wait(0.2, sec); //wait for the cube to all get sucked up
   //moveForward(-0.3, -1, 0, 100); /**enable this if Vision doesn't work**/
   degTurn(135, 100); //turn 135 degree left
-  moveForward(0.2, 0, -1, 100); /**delete this if Vision doesn't work**/
-  moveForwardCalibrated(0.5, 60, 6, 'r'); /**make this 0.2 if vision doesn't work**/
+  moveForward(0.27, 0, 1, 100); /**delete this if Vision doesn't work**/
+  moveForwardCalibrated(0.55, 100, 3, 'r'); /**make this 0.2 if vision doesn't work**/
   stopIntake(true);
   ramp(true, 40, rampPushDeg, 5);
-  moveForward(0.15, 1, 0, 70); //move forward 
   LeftMotor.spin(fwd,100,pct);
   RightMotor.spin(fwd,100,pct);
-  wait(0.15, sec);
-  LeftMotor.stop(hold);
-  RightMotor.stop(hold);
-  ramp(false, 30, rampPushDeg, 5);
+  wait(0.4, sec);
+  LeftMotor.stop();
+  RightMotor.stop();
+  moveForward(-0.03, -1, 0, 40);
+  ramp(false, 40, rampPushDeg, 5);
+  LeftMotor.spin(fwd,40,pct);
+  RightMotor.spin(fwd,40,pct);
+  wait(0.2, sec);
+  LeftMotor.stop();
+  RightMotor.stop();
   stopIntake(false);
-  wait(0.5, sec);
+  wait(0.2, sec);
   moveForward(-0.4, -1, 0, 100);
 }
 
@@ -410,37 +414,51 @@ void autonRedLarge(){ //still need to add the intake and stacking
   moveForward(0.6,1,0,70);
   wait(0.2, sec); //wait for the cube to all get sucked up
  
-  degTurn(-150, 100); //turn 135 degree left
+  degTurn(-135, 100); //turn 135 degree left
   moveForwardCalibrated(0.7, 80, 3, 'o');
   stopIntake(true);
-  ramp(true, 60, rampPushDeg+100, 5);
-  moveForward(0.7, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
-  ramp(false, 20, rampPushDeg+100, 5);
-  stopIntake(false);
-  moveForward(-0.05, -1, 0, 20);
-  moveForward(0.07, 1, 0, 20);
+  ramp(true, 40, rampPushDeg, 4);
+  LeftMotor.spin(fwd, 100, pct);
+  RightMotor.spin(fwd, 100, pct);
   wait(0.5, sec);
-  moveForward(-2, -1, 0, 50);
-
-
+  LeftMotor.stop();
+  RightMotor.stop(); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
+  moveForward(-0.03, -1, 0, 40);
+  ramp(false, 40, rampPushDeg, 5);
+  LeftMotor.spin(fwd,40,pct);
+  RightMotor.spin(fwd,40,pct);
+  wait(0.2, sec);
+  LeftMotor.stop();
+  RightMotor.stop();
+  stopIntake(false);
+  wait(0.2, sec);
+  moveForward(-0.4, -1, 0, 100);
 }
 
 void autonBlueLarge(){ 
-  intakeCubes(100);
-  moveForward(1,1,0,50);
+    intakeCubes(100);
+  moveForward(0.6,1,0,70);
   wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-0.1,-1,0,50);
-  degTurn(165, 100); //turn 135 degree left
-  moveForwardCalibrated(0.7, 80, 20, 'g');
+ 
+  degTurn(135, 100); //turn 135 degree left
+  moveForwardCalibrated(0.7, 80, 3, 'g');
   stopIntake(true);
-  ramp(true, 60, rampPushDeg+100, 5);
-  moveForward(0.7, 1, 0, 70); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
-  ramp(false, 20, rampPushDeg+100, 5);
-  stopIntake(false);
-  moveForward(-0.05, -1, 0, 20);
-  moveForward(0.07, 1, 0, 20);
+  ramp(true, 40, rampPushDeg, 4);
+  LeftMotor.spin(fwd, 100, pct);
+  RightMotor.spin(fwd, 100, pct);
   wait(0.5, sec);
-  moveForward(-0.4, -1, 0, 20);
+  LeftMotor.stop();
+  RightMotor.stop(); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
+  moveForward(-0.03, -1, 0, 40);
+  ramp(false, 40, rampPushDeg, 5);
+  LeftMotor.spin(fwd,40,pct);
+  RightMotor.spin(fwd,40,pct);
+  wait(0.2, sec);
+  LeftMotor.stop();
+  RightMotor.stop();
+  stopIntake(false);
+  wait(0.2, sec);
+  moveForward(-0.4, -1, 0, 100);
 }
 
  void Move(double x_movement, double y_movement, double rotational){
@@ -454,9 +472,17 @@ void autonBlueLarge(){
     sidePower=(x_movement/100)*speed;
  }
 void autonomous(void) { //default code of vex
+    
     //degTurn(90, 50);
-  
-    // //degTurn(45, 50);
+    //ramp(true, 40, rampPushDeg, 5);
+    //ramp(false, 40, rampPushDeg, 5);
+    //degTurn(-135, 50);
+    /*LeftMotor.spin(fwd,100,pct);
+    RightMotor.spin(fwd,100,pct);
+    wait(1, sec);
+    LeftMotor.stop();
+    RightMotor.stop();
+    moveForward(-0.5, -1, 0, 100);*/
     autonBlueSmall();
 
     //code for driverMode or other testing purposes
@@ -635,9 +661,26 @@ void usercontrol(void){
 
 
 
+      double slowVertical=0;
+      double slowHorizontal=0;
+      if(Controller1.ButtonDown.pressing())
+        slowVertical=-50;
+      else if(Controller1.ButtonUp.pressing())
+        slowVertical=50;
+      else
+        slowVertical=0;
 
+      if(Controller1.ButtonLeft.pressing())
+        slowHorizontal=-50;
+      else if(Controller1.ButtonRight.pressing())
+        slowHorizontal=50;
+      else
+        slowHorizontal=0;  
 
-      Move(Controller1.Axis4.position(),Controller1.Axis3.position(),Controller1.Axis1.position());
+      if(slowHorizontal==0 && slowVertical==0) 
+        Move(Controller1.Axis4.position(),Controller1.Axis3.position(),Controller1.Axis1.position());
+      else
+        Move(slowHorizontal,slowVertical,0);
       if(isMoving){
         LeftMotor.spin(vex::directionType::fwd, leftPower, vex::velocityUnits::pct);
         RightMotor.spin(vex::directionType::fwd, rightPower, vex::velocityUnits::pct);
@@ -661,7 +704,16 @@ void usercontrol(void){
         RampMotor1.spin(vex::directionType::fwd,-RampPower, vex::velocityUnits::pct);
         RampMotor2.spin(vex::directionType::fwd,-RampPower, vex::velocityUnits::pct);
         ramping=false;
-      }else{
+      }else if(Controller1.ButtonX.pressing()){
+        RampMotor1.spin(vex::directionType::fwd,100, vex::velocityUnits::pct);
+        RampMotor2.spin(vex::directionType::fwd,100, vex::velocityUnits::pct);
+        ramping=true;
+      }else if(Controller1.ButtonB.pressing()){
+        RampMotor1.spin(vex::directionType::fwd,-100, vex::velocityUnits::pct);
+        RampMotor2.spin(vex::directionType::fwd,-100, vex::velocityUnits::pct);
+        ramping=false;
+      }
+      else{
         if(ramping){
           RampMotor1.stop(hold);
           RampMotor2.stop(hold);
@@ -706,7 +758,7 @@ void usercontrol(void){
 //
 // Main will set up the competition functions and callbacks.
 //
-//competition Competition;
+competition Competition;
 int main() {
   /*pre_auton();
   while(1) {
@@ -723,13 +775,13 @@ int main() {
       Brain.Screen.printAt(20, 20,"vert: %f  hori: %f",verticalDist,horizontalDist);
   }*/
   // Set up callbacks for autonomous and driver control periods.
-  //Competition.autonomous(autonomous);
-  //Competition.drivercontrol(usercontrol);
+  Competition.autonomous(autonomous);
+  Competition.drivercontrol(usercontrol);
   
   // Run the pre-autonomous function.
   pre_auton();
 
-  autonomous();
+  //autonomous();
   //usercontrol();
   //usercontrol();
   // Prevent main from exiting with an infinite loop.
