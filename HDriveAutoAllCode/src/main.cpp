@@ -55,23 +55,6 @@
 #include<math.h>
 using namespace vex;
 
-//constants for the vision sensor for detecting cubes 
-double lowerLength=23.25;
-double numerator=850.4189;
-double denominator=22.5267;
-double cameraHeight=27;
-double WtoD=1.296;
-
-//distance from the camera to the center of the robot
-double horizontalCorrection=17; 
-
-//constants for the vision sensor for detecting the edges(of the place where we stack the cube)
-double lowerLengthEdge=32.385;
-double numeratorEdge=1878.97;
-double denominatorEdge=33.19;
-double cameraHeightEdge=41.3;
-double WtoDEdge=1.5;
-//note that the vision sensor is not configured for red edges yet/ only for blue now
 
 double speed=100; //a speed value that's seldom used
 double rotationSpeed=50; //a rotation speed value that's seldom used
@@ -95,29 +78,6 @@ global variables that you shouldn't mess up with
 */
 double startTime=0;
 bool isMoving=false;
-
-/**
-* calculation for the vertical distance
-* bottomRatio: ratio of the cube's position from bottom up
-* isCube=true if it's cube, = false when we are calculating for edges
-*/
- double verticalDistance(double bottomRatio, bool isCube){ 
-   if(isCube)
-      return bottomRatio*numerator/(cameraHeight-denominator*bottomRatio)+lowerLength;
-   else
-      return bottomRatio*numeratorEdge/(cameraHeightEdge-denominatorEdge*bottomRatio)+lowerLengthEdge;
- }
-
- /**
- * calculate horizontal distance
- * input the vertical distance calculated, leftRatio: ratio of cube's position from left to right and isCube
- */
- double horizontalDistance(double verticalDist, double leftRatio, bool isCube){
-   if(isCube)
-      return (leftRatio-0.5)*WtoD*sqrt(pow(verticalDist,2)+pow(cameraHeight,2))-horizontalCorrection;
-   else
-      return (leftRatio-0.5)*WtoDEdge*sqrt(pow(verticalDist,2)+pow(cameraHeightEdge,2))-horizontalCorrection;
- }
 
  /**
  *  calculate the power of motors based on the inputs
@@ -173,27 +133,6 @@ double calibration(double sideError, double kp){
   return sideError*kp+fabs(sideError)/sideError*10;
 }
 
-void takeShot(char cube){
-  switch(cube){
-        case 'g':
-          Vision1.takeSnapshot(GREEN_CUBE);
-          break;
-        case 'o':
-          Vision1.takeSnapshot(ORANGE_CUBE);
-          break;
-        case 'p':
-          Vision1.takeSnapshot(PURPLE_CUBE);
-          break;
-        case 'b':
-          Vision1.takeSnapshot(BLUEB);
-          break;
-        case 'r':
-          Vision1.takeSnapshot(REDB); //change this to red
-          break;
-  }
-}
-
-
 /**
 * distance indicates direction
 * speed's sign doesn't matter because the program doesn't support moving backward
@@ -201,62 +140,6 @@ void takeShot(char cube){
 * kpVal indicates the speed of correction based on the Vision Sensor
 * cube indicates which type of cube or edge it is
 */
-void moveForwardCalibrated(double distance, double speed, double kpVal, char cube){//distance is in meters
-  double allowedRevolutions = fabs(distance)/revDist*2;
-  double sideError=0;
-  LeftMotor.setVelocity(speed, pct);
-  RightMotor.setVelocity(speed, pct);
-  if (distance < 0){
-    LeftMotor.spin(reverse);
-    RightMotor.spin(reverse);
-  }else{
-    LeftMotor.spin(fwd);
-    RightMotor.spin(fwd);
-  }
-  SideMotor.spin(fwd);
-  double rotation=0;
-  while (rotation <= allowedRevolutions){//the robot thinks half a revolution is a full one
-      takeShot(cube);
-      double verticalDist=1000;
-      double horizontalDist=1000;
-      bool isCubeReliable=false;
-      if(Vision1.objectCount>0){
-        if(cube=='b'){
-          verticalDist=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, false);
-          horizontalDist=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, false);
-          if(Vision1.objectCount>1){
-            verticalDist+=verticalDistance((212.0-Vision1.objects[1].centerY)/212.0, false);
-            verticalDist/=2.0;
-            horizontalDist+=horizontalDistance(verticalDist, Vision1.objects[1].centerX/316.0, false);
-            horizontalDist/=2.0;
-          }
-        }else{
-          verticalDist=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, true);
-          horizontalDist=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, true);
-        }
-      }
-
-      if(verticalDist<200 && verticalDist>0 && horizontalDist<100 && horizontalDist>-100)
-        isCubeReliable=true;
-      if(isCubeReliable)
-        sideError=horizontalDist;
-      else
-        sideError=0;
-    //Brain.Screen.printAt(30, 60, "%f", LeftMotor.position(rev));
-    Brain.Screen.printAt(20, 20, "%f", sideError);
-    rotation=fabs((LeftMotor.position(turns)+RightMotor.position(turns))/2);
-    SideMotor.setVelocity(calibration(sideError,kpVal), pct);
-    LeftMotor.setVelocity(speed,pct);
-    RightMotor.setVelocity(speed,pct);
-  }
-  SideMotor.stop();
-  LeftMotor.stop();
-  RightMotor.stop();
-  SideMotor.resetRotation();
-  LeftMotor.resetRotation();
-  RightMotor.resetRotation();
-}
-
 
 bool isRotationReached(double rotation, double targetDeg){
   double degrees=rotation/turningCoefficient*90;
@@ -294,7 +177,7 @@ void degTurn(double degrees, double speed){//can take negative degrees
   RightMotor.resetRotation();
 
 }
-
+/* INTAKE : EDIT
 void stopIntake(bool brake){
   if(brake){
     intakeLeft.stop();
@@ -335,131 +218,7 @@ void ramp(bool isInit, double power_, double stopDeg, double maxTime){
 }
 
 
-
-void autonBlueSmall(){ //still need to add the intake and stacking
-
-  intakeCubes(100);
-  moveForward(0.6,1,0,100); //move forward again to intake the cubes
-  wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-0.45,-1,-0.4,100); // move backward while moving to the left
-  LeftMotor.stop(hold);
-  RightMotor.stop(hold);
-  moveForward(-0.38, 0, -1, 100); // move to the left
-  LeftMotor.stop(brake);
-  RightMotor.stop(brake);
-  moveForwardCalibrated(0.3, 100,3,'p'); // move forward towards the purple cube
-  moveForward(0.4,1,0,100); //move forward again
-  wait(0.2, sec); //wait for the cube to all get sucked up
-  //moveForward(-0.3, -1, 0, 100); /**enable this if Vision doesn't work**/
-  degTurn(-135, 100); //turn 135 degree left
-  moveForward(-0.27, 0, -1, 100); /**delete this if Vision doesn't work**/
-  moveForwardCalibrated(0.55, 100, 3, 'b'); /**make this 0.2 if vision doesn't work**/
-  stopIntake(true);
-  ramp(true, 40, rampPushDeg, 5);
-  LeftMotor.spin(fwd,100,pct);
-  RightMotor.spin(fwd,100,pct);
-  wait(0.38, sec);
-  LeftMotor.stop();
-  RightMotor.stop();
-  moveForward(-0.03, -1, 0, 40);
-  ramp(false, 40, rampPushDeg, 5);
-  LeftMotor.spin(fwd,40,pct);
-  RightMotor.spin(fwd,40,pct);
-  wait(0.2, sec);
-  LeftMotor.stop();
-  RightMotor.stop();
-  stopIntake(false);
-  wait(0.2, sec);
-  moveForward(-0.4, -1, 0, 100);
-}
-
-void autonRedSmall(){ //still need to add the intake and stacking
-  intakeCubes(100);
-  moveForward(0.6,1,0,100); //move forward again to intake the cubes
-  wait(0.2, sec); //wait for the cube to all get sucked up
-  moveForward(-0.45,-1,0.4,100); // move backward while moving to the left
-  LeftMotor.stop(hold);
-  RightMotor.stop(hold);
-  moveForward(0.38, 0, 1, 100); // move to the left
-  LeftMotor.stop(brake);
-  RightMotor.stop(brake);
-  moveForwardCalibrated(0.3, 100,3,'p'); // move forward towards the purple cube
-  moveForward(0.4,1,0,90); //move forward again
-  wait(0.2, sec); //wait for the cube to all get sucked up
-  //moveForward(-0.3, -1, 0, 100); /**enable this if Vision doesn't work**/
-  degTurn(135, 100); //turn 135 degree left
-  moveForward(0.27, 0, 1, 100); /**delete this if Vision doesn't work**/
-  moveForwardCalibrated(0.55, 100, 3, 'r'); /**make this 0.2 if vision doesn't work**/
-  stopIntake(true);
-  ramp(true, 40, rampPushDeg, 5);
-  LeftMotor.spin(fwd,100,pct);
-  RightMotor.spin(fwd,100,pct);
-  wait(0.4, sec);
-  LeftMotor.stop();
-  RightMotor.stop();
-  moveForward(-0.03, -1, 0, 40);
-  ramp(false, 40, rampPushDeg, 5);
-  LeftMotor.spin(fwd,40,pct);
-  RightMotor.spin(fwd,40,pct);
-  wait(0.2, sec);
-  LeftMotor.stop();
-  RightMotor.stop();
-  stopIntake(false);
-  wait(0.2, sec);
-  moveForward(-0.4, -1, 0, 100);
-}
-
-void autonRedLarge(){ //still need to add the intake and stacking
-  intakeCubes(100);
-  moveForward(0.6,1,0,70);
-  wait(0.2, sec); //wait for the cube to all get sucked up
- 
-  degTurn(-135, 100); //turn 135 degree left
-  moveForwardCalibrated(0.7, 80, 3, 'o');
-  stopIntake(true);
-  ramp(true, 40, rampPushDeg, 4);
-  LeftMotor.spin(fwd, 100, pct);
-  RightMotor.spin(fwd, 100, pct);
-  wait(0.5, sec);
-  LeftMotor.stop();
-  RightMotor.stop(); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
-  moveForward(-0.03, -1, 0, 40);
-  ramp(false, 40, rampPushDeg, 5);
-  LeftMotor.spin(fwd,40,pct);
-  RightMotor.spin(fwd,40,pct);
-  wait(0.2, sec);
-  LeftMotor.stop();
-  RightMotor.stop();
-  stopIntake(false);
-  wait(0.2, sec);
-  moveForward(-0.4, -1, 0, 100);
-}
-
-void autonBlueLarge(){ 
-    intakeCubes(100);
-  moveForward(0.6,1,0,70);
-  wait(0.2, sec); //wait for the cube to all get sucked up
- 
-  degTurn(135, 100); //turn 135 degree left
-  moveForwardCalibrated(0.7, 80, 3, 'g');
-  stopIntake(true);
-  ramp(true, 40, rampPushDeg, 4);
-  LeftMotor.spin(fwd, 100, pct);
-  RightMotor.spin(fwd, 100, pct);
-  wait(0.5, sec);
-  LeftMotor.stop();
-  RightMotor.stop(); //move forward touching the stacking place(smashing with the wall doesn't matter and actually helps align the robot)
-  moveForward(-0.03, -1, 0, 40);
-  ramp(false, 40, rampPushDeg, 5);
-  LeftMotor.spin(fwd,40,pct);
-  RightMotor.spin(fwd,40,pct);
-  wait(0.2, sec);
-  LeftMotor.stop();
-  RightMotor.stop();
-  stopIntake(false);
-  wait(0.2, sec);
-  moveForward(-0.4, -1, 0, 100);
-}
+*/
 
  void Move(double x_movement, double y_movement, double rotational){
     if(x_movement==0 && y_movement==0 && rotational==0)
@@ -471,19 +230,25 @@ void autonBlueLarge(){
     rightPower=(y_movement/100)*speed-rotate;
     sidePower=(x_movement/100)*speed;
  }
+ /* Initialize auton once the robot ready 
+
 void autonomous(void) { //default code of vex
     
-    //degTurn(90, 50);
-    //ramp(true, 40, rampPushDeg, 5);
-    //ramp(false, 40, rampPushDeg, 5);
-    //degTurn(-135, 50);
-    /*LeftMotor.spin(fwd,100,pct);
+    degTurn(90, 50);
+    ramp(true, 40, rampPushDeg, 5);
+    ramp(false, 40, rampPushDeg, 5);
+    degTurn(-135, 50);
+    LeftMotor.spin(fwd,100,pct);
     RightMotor.spin(fwd,100,pct);
     wait(1, sec);
     LeftMotor.stop();
     RightMotor.stop();
-    moveForward(-0.5, -1, 0, 100);*/
+    moveForward(-0.5, -1, 0, 100);
     autonBlueSmall();
+*/ 
+
+
+
 
     //code for driverMode or other testing purposes
     /*while(true){
@@ -622,45 +387,6 @@ void usercontrol(void){
     //RampMotor.resetRotation();
     while(1) {
       
-      // Vision1.takeSnapshot(GREEN_CUBE);
-      // double verticalDist=1000;
-      // double horizontalDist=1000;
-      // bool isCubeReliable=false;
-      // if(Vision1.objectCount>0){
-      //   verticalDist=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, true);
-      //   horizontalDist=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, true);
-      // }
-      // if(verticalDist<200 && verticalDist>0 && horizontalDist<100 && horizontalDist>-100)
-      //   isCubeReliable=true;
-      
-      // Vision1.takeSnapshot(BLUEB);
-      // double verticalDistEdge=1000;
-      // double horizontalDistEdge=1000;
-      // bool isEdgeReliable=false;
-      // if(Vision1.objectCount>0){
-      //   verticalDistEdge=verticalDistance((212.0-Vision1.largestObject.centerY)/212.0, false);
-      //   horizontalDistEdge=horizontalDistance(verticalDist, Vision1.largestObject.centerX/316.0, false);
-      //   if(Vision1.objectCount>1){
-      //     verticalDistEdge+=verticalDistance((212.0-Vision1.objects[1].centerY)/212.0, false);
-      //     verticalDistEdge/=2.0;
-      //     horizontalDistEdge+=horizontalDistance(verticalDist, Vision1.objects[1].centerX/316.0, false);
-      //     horizontalDistEdge/=2.0;
-      //   }
-      // }
-      // if(verticalDistEdge<200 && verticalDistEdge>40 && horizontalDistEdge<100 && horizontalDistEdge>-100){
-      //   if(verticalDistEdge>55)
-      //     isEdgeReliable=true;
-      //   else if(Vision1.objectCount>1)
-      //     isEdgeReliable=true;
-      // }
-      // Brain.Screen.printAt(20,20,"vertical distance:  %f",verticalDist);
-      // Brain.Screen.printAt(20,40,"horizontal distance:  %f",horizontalDist);
-      // Brain.Screen.printAt(20,60,"vertical distance Edge:  %f",verticalDistEdge);
-      // Brain.Screen.printAt(20,80,"horizontal distance Edge:  %f",horizontalDistEdge);
-
-
-
-
       double slowVertical=0;
       double slowHorizontal=0;
       if(Controller1.ButtonDown.pressing())
